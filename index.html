@@ -312,6 +312,14 @@
       letter-spacing: -0.01em;
     }
 
+    .news-title-ja {
+      margin: 8px 0 0;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+      opacity: 0.82;
+    }
+
     .news-summary {
       margin: 10px 0 0;
       color: var(--muted);
@@ -438,7 +446,8 @@
     const STORAGE_KEYS = {
       news: "ai-news-summary-cache-v1",
       filters: "ai-news-summary-filters-v1",
-      updatedAt: "ai-news-summary-updated-at-v1"
+      updatedAt: "ai-news-summary-updated-at-v1",
+      translations: "ai-news-summary-translations-v1"
     };
 
     const SOURCE_OPTIONS = [
@@ -507,6 +516,7 @@
       filteredNews: [],
       isLoading: false,
       lastUpdatedAt: null,
+      translations: {},
       filters: {
         keyword: "",
         source: "all",
@@ -557,12 +567,15 @@
       try {
         const rawNews = localStorage.getItem(STORAGE_KEYS.news);
         const rawUpdatedAt = localStorage.getItem(STORAGE_KEYS.updatedAt);
+        const rawTranslations = localStorage.getItem(STORAGE_KEYS.translations);
         if (!rawNews) {
-          return;
+          state.allNews = [];
+        } else {
+          const parsed = JSON.parse(rawNews);
+          state.allNews = Array.isArray(parsed) ? parsed : [];
         }
-        const parsed = JSON.parse(rawNews);
-        state.allNews = Array.isArray(parsed) ? parsed : [];
         state.lastUpdatedAt = rawUpdatedAt ? Number(rawUpdatedAt) : null;
+        state.translations = rawTranslations ? JSON.parse(rawTranslations) : {};
       } catch (error) {
         console.warn("保存済みニュースの読み込みに失敗しました", error);
       }
@@ -571,6 +584,7 @@
     function saveNews() {
       localStorage.setItem(STORAGE_KEYS.news, JSON.stringify(state.allNews));
       localStorage.setItem(STORAGE_KEYS.updatedAt, String(state.lastUpdatedAt || Date.now()));
+      localStorage.setItem(STORAGE_KEYS.translations, JSON.stringify(state.translations));
     }
 
     function setupEventListeners() {
@@ -883,6 +897,7 @@
       state.filteredNews = state.allNews.filter((item) => matchesFilters(item));
       renderMeta();
       renderNewsList();
+      translateVisibleNewsTitles();
     }
 
     function matchesFilters(item) {
@@ -959,6 +974,10 @@
           const summaryHtml = item.summary
             ? `<p class="news-summary">${escapeHtml(item.summary)}</p>`
             : "";
+          const translatedTitle = getTranslatedTitle(item);
+          const translatedTitleHtml = translatedTitle
+            ? `<p class="news-title-ja">${escapeHtml(translatedTitle)}</p>`
+            : "";
 
           return `
             <a class="news-card" href="${escapeAttribute(item.link)}" target="_blank" rel="noopener noreferrer">
@@ -970,12 +989,77 @@
                 <div class="news-date">${escapeHtml(formatPublishedDate(item.publishedAt, item.timestamp))}</div>
               </div>
               <h3 class="news-title">${escapeHtml(item.title)}</h3>
+              ${translatedTitleHtml}
               ${summaryHtml}
               <span class="news-link">元記事を開く</span>
             </a>
           `;
         })
         .join("");
+    }
+
+    function getTranslatedTitle(item) {
+      const translated = state.translations[item.id];
+      if (!translated || translated === item.title) {
+        return "";
+      }
+      return translated;
+    }
+
+    async function translateVisibleNewsTitles() {
+      const itemsToTranslate = state.filteredNews
+        .slice(0, 20)
+        .filter((item) => shouldTranslateTitle(item));
+
+      for (const item of itemsToTranslate) {
+        try {
+          const translated = await translateTextToJapanese(item.title);
+          if (!translated) {
+            continue;
+          }
+
+          state.translations[item.id] = translated;
+          localStorage.setItem(STORAGE_KEYS.translations, JSON.stringify(state.translations));
+          renderNewsList();
+        } catch (error) {
+          console.warn("翻訳に失敗しました", error);
+        }
+      }
+    }
+
+    function shouldTranslateTitle(item) {
+      if (state.translations[item.id]) {
+        return false;
+      }
+
+      return /[A-Za-z]/.test(item.title);
+    }
+
+    async function translateTextToJapanese(text) {
+      const url = "https://api.mymemory.translated.net/get?q=" + encodeURIComponent(text) + "&langpair=en|ja";
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("translation fetch failed");
+      }
+
+      const data = await response.json();
+      const translated = data && data.responseData ? String(data.responseData.translatedText || "").trim() : "";
+      if (!translated) {
+        return "";
+      }
+
+      return sanitizeTranslation(translated, text);
+    }
+
+    function sanitizeTranslation(translated, original) {
+      const normalizedTranslated = sanitizeText(translated);
+      if (!normalizedTranslated) {
+        return "";
+      }
+      if (normalizedTranslated.toLowerCase() === original.toLowerCase()) {
+        return "";
+      }
+      return normalizedTranslated;
     }
 
     function formatDateTime(timestamp) {
