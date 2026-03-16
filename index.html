@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f7fb">
+  <title>AIニュースまとめ</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7fb;
+      --panel: rgba(255, 255, 255, 0.92);
+      --panel-strong: #ffffff;
+      --text: #1f2937;
+      --muted: #667085;
+      --line: #e7ebf3;
+      --accent: #1d4ed8;
+      --accent-soft: #e8f0ff;
+      --danger: #c2410c;
+      --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --radius-sm: 12px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #10131a;
+        --panel: rgba(24, 28, 39, 0.92);
+        --panel-strong: #171b24;
+        --text: #f3f4f6;
+        --muted: #98a2b3;
+        --line: #2a3140;
+        --accent: #8ab4ff;
+        --accent-soft: rgba(80, 120, 255, 0.16);
+        --danger: #fdba74;
+        --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top, rgba(59, 130, 246, 0.12), transparent 38%),
+        linear-gradient(180deg, var(--bg), var(--bg));
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .page {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      padding: calc(18px + var(--safe-top)) 16px calc(28px + var(--safe-bottom));
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 22px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 14px 0 8px;
+      font-size: 30px;
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .update-button {
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 18px;
+      min-height: 48px;
+      background: var(--text);
+      color: var(--panel-strong);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .update-button:active {
+      transform: scale(0.98);
+    }
+
+    .update-button[disabled] {
+      opacity: 0.64;
+      cursor: wait;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .meta-box {
+      padding: 14px;
+      border-radius: var(--radius-md);
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+    }
+
+    .meta-label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .meta-value {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .filters {
+      margin-top: 16px;
+      padding: 18px;
+    }
+
+    .filters h2,
+    .news-header h2 {
+      margin: 0 0 14px;
+      font-size: 17px;
+    }
+
+    .filter-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .control {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 13px 14px;
+      min-height: 48px;
+      background: var(--panel-strong);
+      color: var(--text);
+      appearance: none;
+    }
+
+    .status {
+      margin: 16px 0 0;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--panel-strong);
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status.error {
+      color: var(--danger);
+      border-style: solid;
+    }
+
+    .news-wrap {
+      margin-top: 16px;
+    }
+
+    .news-header {
+      padding: 18px;
+      margin-bottom: 12px;
+    }
+
+    .news-sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .news-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .news-card {
+      display: block;
+      padding: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      transition: transform 0.18s ease, border-color 0.18s ease;
+    }
+
+    .news-card:active {
+      transform: scale(0.99);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .source-name {
+      display: inline-block;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .flag {
+      display: inline-block;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      background: #fff4d6;
+      color: #9a6700;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .flag {
+        background: rgba(255, 199, 80, 0.16);
+        color: #ffd67d;
+      }
+    }
+
+    .news-date {
+      flex-shrink: 0;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+      line-height: 1.5;
+    }
+
+    .news-title {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.5;
+      letter-spacing: -0.01em;
+    }
+
+    .news-summary {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .news-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .empty {
+      padding: 28px 20px;
+      text-align: center;
+      color: var(--muted);
+      background: var(--panel);
+      border: 1px dashed var(--line);
+      border-radius: 22px;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    @media (max-width: 520px) {
+      h1 {
+        font-size: 28px;
+      }
+
+      .page {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .hero,
+      .filters,
+      .news-header,
+      .news-card {
+        padding: 16px;
+      }
+
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card-top {
+        flex-direction: column;
+      }
+
+      .news-date {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="panel hero">
+      <div class="eyebrow">毎日のAIニュースをすばやく確認</div>
+      <h1>AIニュースまとめ</h1>
+      <p class="lead">AI関連の最新ニュースをまとめて表示します。保存済みニュースを先に見せつつ、裏で最新情報に更新します。</p>
+      <div class="hero-actions">
+        <button id="refreshButton" class="update-button" type="button">更新</button>
+      </div>
+      <div class="meta-grid">
+        <div class="meta-box">
+          <span class="meta-label">最終更新時刻</span>
+          <strong id="lastUpdated" class="meta-value">未更新</strong>
+        </div>
+        <div class="meta-box">
+          <span class="meta-label">取得件数</span>
+          <strong id="newsCount" class="meta-value">0件</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel filters">
+      <h2>フィルター</h2>
+      <div class="filter-grid">
+        <div class="field">
+          <label for="keywordInput">キーワード検索</label>
+          <input id="keywordInput" class="control" type="search" placeholder="例: GPT, agent, chip">
+        </div>
+        <div class="field">
+          <label for="sourceFilter">掲載元</label>
+          <select id="sourceFilter" class="control"></select>
+        </div>
+        <div class="field">
+          <label for="dateFilter">公開日の絞り込み</label>
+          <select id="dateFilter" class="control">
+            <option value="all">すべて</option>
+            <option value="today">今日</option>
+            <option value="3days">3日以内</option>
+            <option value="7days">7日以内</option>
+          </select>
+        </div>
+      </div>
+      <p id="statusMessage" class="status">準備中...</p>
+    </section>
+
+    <section class="news-wrap">
+      <div class="panel news-header">
+        <h2>ニュース一覧</h2>
+        <p id="newsSummary" class="news-sub">表示するニュースを準備しています。</p>
+      </div>
+      <div id="newsList" class="news-list"></div>
+    </section>
+
+    <p class="footer-note">取得元のRSS状況によって一部ソースが更新されない場合があります。その場合でも取得できた分を表示します。</p>
+  </main>
+
+  <script>
+    const APP_TITLE = "AIニュースまとめ";
+    const STORAGE_KEYS = {
+      news: "ai-news-summary-cache-v1",
+      filters: "ai-news-summary-filters-v1",
+      updatedAt: "ai-news-summary-updated-at-v1"
+    };
+
+    const SOURCE_OPTIONS = [
+      { id: "all", label: "すべて" },
+      { id: "openai", label: "OpenAI" },
+      { id: "nvidia", label: "NVIDIA" },
+      { id: "google", label: "Google" },
+      { id: "anthropic", label: "Anthropic" },
+      { id: "techcrunch", label: "TechCrunch" },
+      { id: "venturebeat", label: "VentureBeat" }
+    ];
+
+    const NEWS_SOURCES = [
+      {
+        id: "openai",
+        label: "OpenAI",
+        feedUrl: "https://openai.com/news/rss.xml"
+      },
+      {
+        id: "nvidia",
+        label: "NVIDIA",
+        feedUrl: "https://blogs.nvidia.com/feed/"
+      },
+      {
+        id: "google",
+        label: "Google",
+        feedUrl: "https://blog.google/technology/ai/rss/"
+      },
+      {
+        id: "anthropic",
+        label: "Anthropic",
+        feedUrl: "https://news.google.com/rss/search?q=site:anthropic.com%20Anthropic&hl=en-US&gl=US&ceid=US:en"
+      },
+      {
+        id: "techcrunch",
+        label: "TechCrunch",
+        feedUrl: "https://techcrunch.com/category/artificial-intelligence/feed/"
+      },
+      {
+        id: "venturebeat",
+        label: "VentureBeat",
+        feedUrl: "https://venturebeat.com/ai/feed/"
+      }
+    ];
+
+    const SPOTLIGHT_KEYWORDS = [
+      "release",
+      "launch",
+      "announce",
+      "announcing",
+      "model",
+      "gpt",
+      "agent",
+      "chip",
+      "funding",
+      "series",
+      "raise",
+      "sonnet",
+      "gemini",
+      "claude",
+      "nvidia"
+    ];
+
+    const state = {
+      allNews: [],
+      filteredNews: [],
+      isLoading: false,
+      lastUpdatedAt: null,
+      filters: {
+        keyword: "",
+        source: "all",
+        dateRange: "all"
+      }
+    };
+
+    const elements = {
+      refreshButton: document.getElementById("refreshButton"),
+      lastUpdated: document.getElementById("lastUpdated"),
+      newsCount: document.getElementById("newsCount"),
+      keywordInput: document.getElementById("keywordInput"),
+      sourceFilter: document.getElementById("sourceFilter"),
+      dateFilter: document.getElementById("dateFilter"),
+      statusMessage: document.getElementById("statusMessage"),
+      newsSummary: document.getElementById("newsSummary"),
+      newsList: document.getElementById("newsList")
+    };
+
+    function initializeSourceFilter() {
+      elements.sourceFilter.innerHTML = SOURCE_OPTIONS
+        .map((option) => `<option value="${option.id}">${option.label}</option>`)
+        .join("");
+    }
+
+    function loadStoredFilters() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.filters);
+        if (!raw) {
+          return;
+        }
+        const saved = JSON.parse(raw);
+        state.filters = {
+          keyword: saved.keyword || "",
+          source: saved.source || "all",
+          dateRange: saved.dateRange || "all"
+        };
+      } catch (error) {
+        console.warn("フィルターの読み込みに失敗しました", error);
+      }
+    }
+
+    function saveFilters() {
+      localStorage.setItem(STORAGE_KEYS.filters, JSON.stringify(state.filters));
+    }
+
+    function loadStoredNews() {
+      try {
+        const rawNews = localStorage.getItem(STORAGE_KEYS.news);
+        const rawUpdatedAt = localStorage.getItem(STORAGE_KEYS.updatedAt);
+        if (!rawNews) {
+          return;
+        }
+        const parsed = JSON.parse(rawNews);
+        state.allNews = Array.isArray(parsed) ? parsed : [];
+        state.lastUpdatedAt = rawUpdatedAt ? Number(rawUpdatedAt) : null;
+      } catch (error) {
+        console.warn("保存済みニュースの読み込みに失敗しました", error);
+      }
+    }
+
+    function saveNews() {
+      localStorage.setItem(STORAGE_KEYS.news, JSON.stringify(state.allNews));
+      localStorage.setItem(STORAGE_KEYS.updatedAt, String(state.lastUpdatedAt || Date.now()));
+    }
+
+    function setupEventListeners() {
+      elements.refreshButton.addEventListener("click", () => {
+        fetchAndRenderNews(true);
+      });
+
+      elements.keywordInput.addEventListener("input", (event) => {
+        state.filters.keyword = event.target.value.trim();
+        saveFilters();
+        applyFiltersAndRender();
+      });
+
+      elements.sourceFilter.addEventListener("change", (event) => {
+        state.filters.source = event.target.value;
+        saveFilters();
+        applyFiltersAndRender();
+      });
+
+      elements.dateFilter.addEventListener("change", (event) => {
+        state.filters.dateRange = event.target.value;
+        saveFilters();
+        applyFiltersAndRender();
+      });
+    }
+
+    function syncFilterInputs() {
+      elements.keywordInput.value = state.filters.keyword;
+      elements.sourceFilter.value = state.filters.source;
+      elements.dateFilter.value = state.filters.dateRange;
+    }
+
+    function setStatus(message, type = "normal") {
+      elements.statusMessage.textContent = message;
+      elements.statusMessage.className = type === "error" ? "status error" : "status";
+    }
+
+    function setLoading(isLoading) {
+      state.isLoading = isLoading;
+      elements.refreshButton.disabled = isLoading;
+      if (isLoading) {
+        elements.refreshButton.textContent = "更新中...";
+      } else {
+        elements.refreshButton.textContent = "更新";
+      }
+    }
+
+    async function fetchAndRenderNews(isManualRefresh = false) {
+      setLoading(true);
+      setStatus("読み込み中...");
+
+      try {
+        const fetchedNews = await fetchAllNews();
+        state.allNews = fetchedNews;
+        state.lastUpdatedAt = Date.now();
+        saveNews();
+        applyFiltersAndRender();
+
+        if (fetchedNews.length === 0) {
+          setStatus("ニュースがありません");
+        } else if (isManualRefresh) {
+          setStatus("最新ニュースを更新しました");
+        } else {
+          setStatus("最新ニュースを取得しました");
+        }
+      } catch (error) {
+        console.error(error);
+        applyFiltersAndRender();
+        setStatus("ニュース取得失敗", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function fetchAllNews() {
+      const settledResults = await Promise.allSettled(
+        NEWS_SOURCES.map((source) => fetchSourceNews(source))
+      );
+
+      const mergedNews = [];
+      let successCount = 0;
+      settledResults.forEach((result) => {
+        if (result.status === "fulfilled") {
+          successCount += 1;
+          mergedNews.push(...result.value);
+        }
+      });
+
+      if (successCount === 0) {
+        throw new Error("all sources failed");
+      }
+
+      return sortNewsByDate(deduplicateNews(mergedNews));
+    }
+
+    async function fetchSourceNews(source) {
+      const strategies = [fetchViaRss2Json, fetchViaAllOrigins];
+      let lastError = null;
+
+      for (const strategy of strategies) {
+        try {
+          const items = await strategy(source);
+          if (items.length > 0) {
+            return items;
+          }
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      if (lastError) {
+        console.warn(source.label + " の取得に失敗しました", lastError);
+        throw lastError;
+      }
+
+      return [];
+    }
+
+    async function fetchViaRss2Json(source) {
+      const url = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(source.feedUrl);
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("rss2json fetch failed");
+      }
+
+      const data = await response.json();
+      if (data.status !== "ok" || !Array.isArray(data.items)) {
+        throw new Error("rss2json parse failed");
+      }
+
+      return data.items.map((item) => normalizeNewsItem(item, source)).filter(Boolean);
+    }
+
+    async function fetchViaAllOrigins(source) {
+      const url = "https://api.allorigins.win/raw?url=" + encodeURIComponent(source.feedUrl);
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("allorigins fetch failed");
+      }
+
+      const xmlText = await response.text();
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlText, "text/xml");
+      if (xml.querySelector("parsererror")) {
+        throw new Error("XML parse failed");
+      }
+
+      const nodes = Array.from(xml.querySelectorAll("item, entry"));
+      return nodes.map((node) => normalizeXmlNewsItem(node, source)).filter(Boolean);
+    }
+
+    function normalizeNewsItem(item, source) {
+      const title = sanitizeText(item.title || "");
+      const link = item.link || item.guid || "";
+      if (!title || !link) {
+        return null;
+      }
+
+      const publishedAt = item.pubDate || item.published || item.isoDate || "";
+      const summary = buildSummary(item.description || item.content || "");
+      return createNewsObject({
+        title,
+        link,
+        summary,
+        publishedAt,
+        sourceId: source.id,
+        sourceLabel: source.label
+      });
+    }
+
+    function normalizeXmlNewsItem(node, source) {
+      const title = sanitizeText(getNodeText(node, "title"));
+      const link = getXmlLink(node);
+      if (!title || !link) {
+        return null;
+      }
+
+      const publishedAt =
+        getNodeText(node, "pubDate") ||
+        getNodeText(node, "published") ||
+        getNodeText(node, "updated") ||
+        getNodeText(node, "dc\\:date");
+
+      const summary =
+        buildSummary(getNodeText(node, "description")) ||
+        buildSummary(getNodeText(node, "content")) ||
+        buildSummary(getNodeText(node, "summary"));
+
+      return createNewsObject({
+        title,
+        link,
+        summary,
+        publishedAt,
+        sourceId: source.id,
+        sourceLabel: source.label
+      });
+    }
+
+    function createNewsObject({ title, link, summary, publishedAt, sourceId, sourceLabel }) {
+      const timestamp = parseDateToTimestamp(publishedAt);
+      const isNew = timestamp ? Date.now() - timestamp < 1000 * 60 * 60 * 24 * 2 : false;
+      const isSpotlight = hasSpotlightKeyword(title);
+
+      return {
+        id: buildNewsId(title, link),
+        title,
+        link,
+        summary,
+        publishedAt,
+        timestamp,
+        sourceId,
+        sourceLabel,
+        isNew,
+        isSpotlight
+      };
+    }
+
+    function getNodeText(node, selector) {
+      const target = node.querySelector(selector);
+      return target ? target.textContent.trim() : "";
+    }
+
+    function getXmlLink(node) {
+      const linkNode = node.querySelector("link");
+      if (!linkNode) {
+        return "";
+      }
+
+      if (linkNode.getAttribute("href")) {
+        return linkNode.getAttribute("href");
+      }
+
+      return linkNode.textContent.trim();
+    }
+
+    function sanitizeText(text) {
+      return String(text)
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function buildSummary(text) {
+      const cleaned = sanitizeText(text);
+      if (!cleaned) {
+        return "";
+      }
+      return cleaned.length > 120 ? cleaned.slice(0, 120).trim() + "..." : cleaned;
+    }
+
+    function parseDateToTimestamp(value) {
+      if (!value) {
+        return null;
+      }
+
+      const parsed = new Date(value);
+      const time = parsed.getTime();
+      return Number.isNaN(time) ? null : time;
+    }
+
+    function buildNewsId(title, link) {
+      return normalizeForCompare(title) + "::" + link;
+    }
+
+    function normalizeForCompare(text) {
+      return String(text)
+        .toLowerCase()
+        .replace(/https?:\/\/\S+/g, "")
+        .replace(/[^a-z0-9\u3040-\u30ff\u3400-\u9fff]+/gi, " ")
+        .trim()
+        .replace(/\s+/g, " ");
+    }
+
+    function hasSpotlightKeyword(title) {
+      const lowerTitle = title.toLowerCase();
+      return SPOTLIGHT_KEYWORDS.some((keyword) => lowerTitle.includes(keyword));
+    }
+
+    function deduplicateNews(newsItems) {
+      const seen = new Set();
+      const unique = [];
+
+      newsItems.forEach((item) => {
+        const key = normalizeForCompare(item.title);
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(item);
+        }
+      });
+
+      return unique;
+    }
+
+    function sortNewsByDate(newsItems) {
+      return [...newsItems].sort((a, b) => {
+        if (!a.timestamp && !b.timestamp) {
+          return 0;
+        }
+        if (!a.timestamp) {
+          return 1;
+        }
+        if (!b.timestamp) {
+          return -1;
+        }
+        return b.timestamp - a.timestamp;
+      });
+    }
+
+    function applyFiltersAndRender() {
+      state.filteredNews = state.allNews.filter((item) => matchesFilters(item));
+      renderMeta();
+      renderNewsList();
+    }
+
+    function matchesFilters(item) {
+      const keyword = state.filters.keyword.toLowerCase();
+      const targetText = [item.title, item.summary, item.sourceLabel].join(" ").toLowerCase();
+
+      if (keyword && !targetText.includes(keyword)) {
+        return false;
+      }
+
+      if (state.filters.source !== "all" && item.sourceId !== state.filters.source) {
+        return false;
+      }
+
+      if (state.filters.dateRange !== "all" && !isWithinDateRange(item.timestamp, state.filters.dateRange)) {
+        return false;
+      }
+
+      return true;
+    }
+
+    function isWithinDateRange(timestamp, range) {
+      if (!timestamp) {
+        return false;
+      }
+
+      const now = Date.now();
+      const diff = now - timestamp;
+      const oneDay = 1000 * 60 * 60 * 24;
+
+      if (range === "today") {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        return timestamp >= startOfToday.getTime();
+      }
+      if (range === "3days") {
+        return diff <= oneDay * 3;
+      }
+      if (range === "7days") {
+        return diff <= oneDay * 7;
+      }
+      return true;
+    }
+
+    function renderMeta() {
+      const totalFetched = state.allNews.length;
+      const totalCount = state.filteredNews.length;
+      elements.newsCount.textContent = totalCount === totalFetched
+        ? totalCount + "件"
+        : totalCount + "件 / 全" + totalFetched + "件";
+      elements.lastUpdated.textContent = state.lastUpdatedAt ? formatDateTime(state.lastUpdatedAt) : "未更新";
+      elements.newsSummary.textContent = totalCount > 0
+        ? "条件に合うニュースを " + totalCount + "件 表示しています。"
+        : "条件に合うニュースはまだありません。";
+      document.title = APP_TITLE;
+    }
+
+    function renderNewsList() {
+      if (state.filteredNews.length === 0) {
+        elements.newsList.innerHTML = '<div class="empty">ニュースがありません</div>';
+        return;
+      }
+
+      elements.newsList.innerHTML = state.filteredNews
+        .map((item) => {
+          const flags = [];
+          if (item.isNew) {
+            flags.push('<span class="flag">NEW</span>');
+          }
+          if (item.isSpotlight) {
+            flags.push('<span class="flag">注目</span>');
+          }
+
+          const summaryHtml = item.summary
+            ? `<p class="news-summary">${escapeHtml(item.summary)}</p>`
+            : "";
+
+          return `
+            <a class="news-card" href="${escapeAttribute(item.link)}" target="_blank" rel="noopener noreferrer">
+              <div class="card-top">
+                <div class="source-badge">
+                  <span class="source-name">${escapeHtml(item.sourceLabel)}</span>
+                  ${flags.join("")}
+                </div>
+                <div class="news-date">${escapeHtml(formatPublishedDate(item.publishedAt, item.timestamp))}</div>
+              </div>
+              <h3 class="news-title">${escapeHtml(item.title)}</h3>
+              ${summaryHtml}
+              <span class="news-link">元記事を開く</span>
+            </a>
+          `;
+        })
+        .join("");
+    }
+
+    function formatDateTime(timestamp) {
+      const formatter = new Intl.DateTimeFormat("ja-JP", {
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+      return formatter.format(new Date(timestamp));
+    }
+
+    function formatPublishedDate(rawValue, timestamp) {
+      if (timestamp) {
+        return new Intl.DateTimeFormat("ja-JP", {
+          year: "numeric",
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }).format(new Date(timestamp));
+      }
+      return rawValue || "日付不明";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function escapeAttribute(value) {
+      return escapeHtml(value);
+    }
+
+    function renderStoredContentFirst() {
+      if (state.allNews.length > 0) {
+        applyFiltersAndRender();
+        setStatus("保存済みニュースを表示しています。裏で最新情報を取得します。");
+      } else {
+        renderMeta();
+        renderNewsList();
+        setStatus("読み込み中...");
+      }
+    }
+
+    function initializeApp() {
+      initializeSourceFilter();
+      loadStoredFilters();
+      loadStoredNews();
+      syncFilterInputs();
+      setupEventListeners();
+      renderStoredContentFirst();
+      fetchAndRenderNews(false);
+    }
+
+    initializeApp();
+  </script>
+</body>
+</html>
