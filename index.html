@@ -224,6 +224,57 @@
       margin-top: 16px;
     }
 
+    .conversation-panel {
+      padding: 18px;
+      margin-bottom: 12px;
+    }
+
+    .conversation-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .conversation-sub {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .conversation-button {
+      border: 0;
+      border-radius: 16px;
+      padding: 13px 16px;
+      min-height: 48px;
+      background: var(--accent);
+      color: #ffffff;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .conversation-button[disabled] {
+      opacity: 0.64;
+      cursor: wait;
+    }
+
+    .conversation-output {
+      margin-top: 14px;
+      padding: 16px;
+      border-radius: var(--radius-md);
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      white-space: pre-wrap;
+      line-height: 1.9;
+      font-size: 14px;
+    }
+
+    .conversation-output.empty-state {
+      color: var(--muted);
+    }
+
     .news-header {
       padding: 18px;
       margin-bottom: 12px;
@@ -431,6 +482,16 @@
     </section>
 
     <section class="news-wrap">
+      <div class="panel conversation-panel">
+        <div class="conversation-top">
+          <div>
+            <h2>今日の話題</h2>
+            <p class="conversation-sub">表示中のニュースから、会話形式の読み物を自動で作ります。</p>
+          </div>
+          <button id="conversationButton" class="conversation-button" type="button">今日の話題を会話形式で作る</button>
+        </div>
+        <div id="conversationOutput" class="conversation-output empty-state">まだ作成していません。ボタンを押すと、今日の話題を会話形式でまとめます。</div>
+      </div>
       <div class="panel news-header">
         <h2>ニュース一覧</h2>
         <p id="newsSummary" class="news-sub">表示するニュースを準備しています。</p>
@@ -515,8 +576,10 @@
       allNews: [],
       filteredNews: [],
       isLoading: false,
+      isGeneratingConversation: false,
       lastUpdatedAt: null,
       translations: {},
+      conversationText: "",
       filters: {
         keyword: "",
         source: "all",
@@ -531,6 +594,8 @@
       keywordInput: document.getElementById("keywordInput"),
       sourceFilter: document.getElementById("sourceFilter"),
       dateFilter: document.getElementById("dateFilter"),
+      conversationButton: document.getElementById("conversationButton"),
+      conversationOutput: document.getElementById("conversationOutput"),
       statusMessage: document.getElementById("statusMessage"),
       newsSummary: document.getElementById("newsSummary"),
       newsList: document.getElementById("newsList")
@@ -608,6 +673,10 @@
         state.filters.dateRange = event.target.value;
         saveFilters();
         applyFiltersAndRender();
+      });
+
+      elements.conversationButton.addEventListener("click", () => {
+        generateConversationSummary();
       });
     }
 
@@ -895,7 +964,9 @@
 
     function applyFiltersAndRender() {
       state.filteredNews = state.allNews.filter((item) => matchesFilters(item));
+      state.conversationText = "";
       renderMeta();
+      renderConversation();
       renderNewsList();
       translateVisibleNewsTitles();
     }
@@ -953,6 +1024,21 @@
         ? "条件に合うニュースを " + totalCount + "件 表示しています。"
         : "条件に合うニュースはまだありません。";
       document.title = APP_TITLE;
+    }
+
+    function renderConversation() {
+      if (!state.conversationText) {
+        elements.conversationOutput.className = "conversation-output empty-state";
+        elements.conversationOutput.textContent = "まだ作成していません。ボタンを押すと、今日の話題を会話形式でまとめます。";
+      } else {
+        elements.conversationOutput.className = "conversation-output";
+        elements.conversationOutput.textContent = state.conversationText;
+      }
+
+      elements.conversationButton.disabled = state.isGeneratingConversation;
+      elements.conversationButton.textContent = state.isGeneratingConversation
+        ? "作成中..."
+        : "今日の話題を会話形式で作る";
     }
 
     function renderNewsList() {
@@ -1099,6 +1185,7 @@
     }
 
     function renderStoredContentFirst() {
+      renderConversation();
       if (state.allNews.length > 0) {
         applyFiltersAndRender();
         setStatus("保存済みニュースを表示しています。裏で最新情報を取得します。");
@@ -1117,6 +1204,143 @@
       setupEventListeners();
       renderStoredContentFirst();
       fetchAndRenderNews(false);
+    }
+
+    async function generateConversationSummary() {
+      if (state.filteredNews.length === 0) {
+        state.conversationText = "A: 今日はニュースが少ないね。\nB: いまの絞り込み条件では表示中のニュースがないので、条件をゆるめると話題を作れそうです。";
+        renderConversation();
+        return;
+      }
+
+      state.isGeneratingConversation = true;
+      renderConversation();
+
+      try {
+        await translateVisibleNewsTitles();
+        state.conversationText = buildConversationSummary(state.filteredNews.slice(0, 6));
+        renderConversation();
+      } finally {
+        state.isGeneratingConversation = false;
+        renderConversation();
+      }
+    }
+
+    function buildConversationSummary(newsItems) {
+      const lead = newsItems[0];
+      const focusThemes = detectThemes(newsItems);
+      const sourceNames = summarizeSources(newsItems);
+      const headline1 = getReadableHeadline(newsItems[0]);
+      const headline2 = newsItems[1] ? getReadableHeadline(newsItems[1]) : "";
+      const headline3 = newsItems[2] ? getReadableHeadline(newsItems[2]) : "";
+      const angle = buildImpactAngle(focusThemes);
+      const closing = buildClosingLine(newsItems);
+
+      const lines = [
+        "A: 今日のAIニュース、ざっくりどんな流れだった？",
+        "B: 今日は" + sourceNames + "を中心に、" + focusThemes.join("と") + "が目立つ一日でした。",
+        "A: いちばん気になる話題は？",
+        "B: まずは「" + headline1 + "」です。" + buildContextSentence(lead),
+      ];
+
+      if (headline2) {
+        lines.push("A: ほかにも押さえておくべき動きはある？");
+        lines.push("B: 「" + headline2 + "」も重要です。" + buildContextSentence(newsItems[1]));
+      }
+
+      if (headline3) {
+        lines.push("A: それって一過性のニュースなのかな。");
+        lines.push("B: それだけではなく、「" + headline3 + "」も出ていて、流れが点ではなく面で広がっている印象です。");
+      }
+
+      lines.push("A: まとめると、今日の変化はどこにある？");
+      lines.push("B: " + angle);
+      lines.push("A: じゃあ今日の話題として一言で言うと？");
+      lines.push("B: " + closing);
+
+      return lines.join("\n");
+    }
+
+    function detectThemes(newsItems) {
+      const themes = [];
+      const text = newsItems.map((item) => [item.title, item.summary].join(" ")).join(" ").toLowerCase();
+
+      if (/(gpt|claude|gemini|model|sonnet|llm)/.test(text)) {
+        themes.push("モデル競争");
+      }
+      if (/(chip|gpu|nvidia|compute|infrastructure|datacenter)/.test(text)) {
+        themes.push("計算資源");
+      }
+      if (/(agent|assistant|workflow|tool|operator)/.test(text)) {
+        themes.push("AIエージェント");
+      }
+      if (/(funding|raise|acquisition|enterprise|business|revenue)/.test(text)) {
+        themes.push("事業化");
+      }
+      if (themes.length === 0) {
+        themes.push("新サービスの発表");
+      }
+      return themes.slice(0, 2);
+    }
+
+    function summarizeSources(newsItems) {
+      const labels = [];
+      newsItems.forEach((item) => {
+        if (!labels.includes(item.sourceLabel)) {
+          labels.push(item.sourceLabel);
+        }
+      });
+
+      if (labels.length === 1) {
+        return labels[0];
+      }
+      if (labels.length === 2) {
+        return labels[0] + "と" + labels[1];
+      }
+      return labels.slice(0, 3).join("、");
+    }
+
+    function getReadableHeadline(item) {
+      return getTranslatedTitle(item) || item.title;
+    }
+
+    function buildContextSentence(item) {
+      if (!item) {
+        return "";
+      }
+
+      const summary = item.summary
+        ? item.summary.replace(/\.\.\.$/, "").slice(0, 70)
+        : "";
+
+      if (summary) {
+        return " 要点だけ見ると、" + summary + "という内容です。";
+      }
+
+      if (item.sourceLabel) {
+        return " " + item.sourceLabel + "発の話題としてチェックしておきたい内容です。";
+      }
+
+      return "";
+    }
+
+    function buildImpactAngle(themes) {
+      if (themes.includes("モデル競争") && themes.includes("計算資源")) {
+        return "高性能なモデル開発と、その土台になる計算資源の確保が同時に進んでいて、AI競争がさらに本格化している点です。";
+      }
+      if (themes.includes("AIエージェント")) {
+        return "単なるチャットから一歩進んで、実務の流れにAIを組み込む方向が強まっている点です。";
+      }
+      if (themes.includes("事業化")) {
+        return "技術発表だけではなく、企業導入や収益化まで含めてAIが現実のビジネスに深く入ってきている点です。";
+      }
+      return "各社が発表を重ねながら、AIの使い道を広げる競争を着実に進めている点です。";
+    }
+
+    function buildClosingLine(newsItems) {
+      const lead = newsItems[0];
+      const leadSource = lead ? lead.sourceLabel : "AI業界";
+      return "今日は" + leadSource + "の動きを起点に、AIの性能競争と実用化の広がりが同時に見えた一日でした。";
     }
 
     initializeApp();
