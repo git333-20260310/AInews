@@ -172,6 +172,56 @@
       padding: 18px;
     }
 
+    .filters summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .filters summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .filters-summary-text {
+      display: grid;
+      gap: 6px;
+    }
+
+    .filters-summary-sub {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .filters-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .filters-body {
+      margin-top: 14px;
+    }
+
+    .filters[open] .filters-toggle::after {
+      content: "閉じる";
+    }
+
+    .filters:not([open]) .filters-toggle::after {
+      content: "開く";
+    }
+
     .filters h2,
     .news-header h2 {
       margin: 0 0 14px;
@@ -273,6 +323,13 @@
 
     .conversation-output.empty-state {
       color: var(--muted);
+    }
+
+    .conversation-meta {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
     }
 
     .news-header {
@@ -378,6 +435,25 @@
       line-height: 1.7;
     }
 
+    .study-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .study-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
     .news-link {
       display: inline-flex;
       align-items: center;
@@ -457,40 +533,49 @@
       </div>
     </section>
 
-    <section class="panel filters">
-      <h2>フィルター</h2>
-      <div class="filter-grid">
-        <div class="field">
-          <label for="keywordInput">キーワード検索</label>
-          <input id="keywordInput" class="control" type="search" placeholder="例: GPT, agent, chip">
+    <details id="filtersPanel" class="panel filters">
+      <summary>
+        <div class="filters-summary-text">
+          <strong>フィルター</strong>
+          <span id="filtersSummary" class="filters-summary-sub">現在は全ニュースを表示中です。</span>
         </div>
-        <div class="field">
-          <label for="sourceFilter">掲載元</label>
-          <select id="sourceFilter" class="control"></select>
+        <span class="filters-toggle" aria-hidden="true"></span>
+      </summary>
+      <div class="filters-body">
+        <div class="filter-grid">
+          <div class="field">
+            <label for="keywordInput">キーワード検索</label>
+            <input id="keywordInput" class="control" type="search" placeholder="例: GPT, agent, chip">
+          </div>
+          <div class="field">
+            <label for="sourceFilter">掲載元</label>
+            <select id="sourceFilter" class="control"></select>
+          </div>
+          <div class="field">
+            <label for="dateFilter">公開日の絞り込み</label>
+            <select id="dateFilter" class="control">
+              <option value="all">すべて</option>
+              <option value="today">今日</option>
+              <option value="3days">3日以内</option>
+              <option value="7days">7日以内</option>
+            </select>
+          </div>
         </div>
-        <div class="field">
-          <label for="dateFilter">公開日の絞り込み</label>
-          <select id="dateFilter" class="control">
-            <option value="all">すべて</option>
-            <option value="today">今日</option>
-            <option value="3days">3日以内</option>
-            <option value="7days">7日以内</option>
-          </select>
-        </div>
+        <p id="statusMessage" class="status">準備中...</p>
       </div>
-      <p id="statusMessage" class="status">準備中...</p>
-    </section>
+    </details>
 
     <section class="news-wrap">
       <div class="panel conversation-panel">
         <div class="conversation-top">
           <div>
             <h2>今日の話題</h2>
-            <p class="conversation-sub">表示中のニュースから、会話形式の読み物を自動で作ります。</p>
+            <p class="conversation-sub">表示中ニュース全体をもとに、会話形式で自動要約します。</p>
           </div>
-          <button id="conversationButton" class="conversation-button" type="button">今日の話題を会話形式で作る</button>
+          <button id="conversationButton" class="conversation-button" type="button">会話まとめを再作成</button>
         </div>
-        <div id="conversationOutput" class="conversation-output empty-state">まだ作成していません。ボタンを押すと、今日の話題を会話形式でまとめます。</div>
+        <div id="conversationOutput" class="conversation-output empty-state">会話まとめを準備しています。</div>
+        <div id="conversationMeta" class="conversation-meta"></div>
       </div>
       <div class="panel news-header">
         <h2>ニュース一覧</h2>
@@ -572,9 +657,13 @@
       "nvidia"
     ];
 
+    const DISPLAY_LIMIT = 10;
+
     const state = {
       allNews: [],
       filteredNews: [],
+      visibleNews: [],
+      overflowNews: [],
       isLoading: false,
       isGeneratingConversation: false,
       lastUpdatedAt: null,
@@ -594,8 +683,11 @@
       keywordInput: document.getElementById("keywordInput"),
       sourceFilter: document.getElementById("sourceFilter"),
       dateFilter: document.getElementById("dateFilter"),
+      filtersPanel: document.getElementById("filtersPanel"),
+      filtersSummary: document.getElementById("filtersSummary"),
       conversationButton: document.getElementById("conversationButton"),
       conversationOutput: document.getElementById("conversationOutput"),
+      conversationMeta: document.getElementById("conversationMeta"),
       statusMessage: document.getElementById("statusMessage"),
       newsSummary: document.getElementById("newsSummary"),
       newsList: document.getElementById("newsList")
@@ -964,11 +1056,16 @@
 
     function applyFiltersAndRender() {
       state.filteredNews = state.allNews.filter((item) => matchesFilters(item));
+      state.visibleNews = state.filteredNews.slice(0, DISPLAY_LIMIT);
+      state.overflowNews = state.filteredNews.slice(DISPLAY_LIMIT);
       state.conversationText = "";
       renderMeta();
       renderConversation();
       renderNewsList();
-      translateVisibleNewsTitles();
+      translateNewsTitles(state.filteredNews, 20).then(() => {
+        renderNewsList();
+        autoGenerateConversationSummary();
+      });
     }
 
     function matchesFilters(item) {
@@ -1016,38 +1113,47 @@
     function renderMeta() {
       const totalFetched = state.allNews.length;
       const totalCount = state.filteredNews.length;
+      const visibleCount = state.visibleNews.length;
+      const overflowCount = state.overflowNews.length;
       elements.newsCount.textContent = totalCount === totalFetched
         ? totalCount + "件"
         : totalCount + "件 / 全" + totalFetched + "件";
       elements.lastUpdated.textContent = state.lastUpdatedAt ? formatDateTime(state.lastUpdatedAt) : "未更新";
       elements.newsSummary.textContent = totalCount > 0
-        ? "条件に合うニュースを " + totalCount + "件 表示しています。"
+        ? "一覧は " + visibleCount + "件、残り " + overflowCount + "件 は上の会話まとめで確認できます。"
         : "条件に合うニュースはまだありません。";
+      elements.filtersSummary.textContent = buildFiltersSummaryText();
       document.title = APP_TITLE;
     }
 
     function renderConversation() {
       if (!state.conversationText) {
         elements.conversationOutput.className = "conversation-output empty-state";
-        elements.conversationOutput.textContent = "まだ作成していません。ボタンを押すと、今日の話題を会話形式でまとめます。";
+        elements.conversationOutput.textContent = "会話まとめを準備しています。";
       } else {
         elements.conversationOutput.className = "conversation-output";
         elements.conversationOutput.textContent = state.conversationText;
       }
 
+      if (state.filteredNews.length === 0) {
+        elements.conversationMeta.textContent = "";
+      } else {
+        elements.conversationMeta.textContent = "表示中の " + state.filteredNews.length + "件 全体を見ながら、読みやすく圧縮してまとめています。";
+      }
+
       elements.conversationButton.disabled = state.isGeneratingConversation;
       elements.conversationButton.textContent = state.isGeneratingConversation
         ? "作成中..."
-        : "今日の話題を会話形式で作る";
+        : "会話まとめを再作成";
     }
 
     function renderNewsList() {
-      if (state.filteredNews.length === 0) {
+      if (state.visibleNews.length === 0) {
         elements.newsList.innerHTML = '<div class="empty">ニュースがありません</div>';
         return;
       }
 
-      elements.newsList.innerHTML = state.filteredNews
+      elements.newsList.innerHTML = state.visibleNews
         .map((item) => {
           const flags = [];
           if (item.isNew) {
@@ -1064,6 +1170,10 @@
           const translatedTitleHtml = translatedTitle
             ? `<p class="news-title-ja">${escapeHtml(translatedTitle)}</p>`
             : "";
+          const studyTags = buildStudyTags(item);
+          const studyTagsHtml = studyTags.length > 0
+            ? `<div class="study-tags">${studyTags.map((tag) => `<span class="study-tag">${escapeHtml(tag)}</span>`).join("")}</div>`
+            : "";
 
           return `
             <a class="news-card" href="${escapeAttribute(item.link)}" target="_blank" rel="noopener noreferrer">
@@ -1077,6 +1187,7 @@
               <h3 class="news-title">${escapeHtml(item.title)}</h3>
               ${translatedTitleHtml}
               ${summaryHtml}
+              ${studyTagsHtml}
               <span class="news-link">元記事を開く</span>
             </a>
           `;
@@ -1092,9 +1203,9 @@
       return translated;
     }
 
-    async function translateVisibleNewsTitles() {
-      const itemsToTranslate = state.filteredNews
-        .slice(0, 20)
+    async function translateNewsTitles(newsItems, limit = 20) {
+      const itemsToTranslate = newsItems
+        .slice(0, limit)
         .filter((item) => shouldTranslateTitle(item));
 
       for (const item of itemsToTranslate) {
@@ -1146,6 +1257,78 @@
         return "";
       }
       return normalizedTranslated;
+    }
+
+    function buildStudyTags(item) {
+      const text = [item.title, item.summary].join(" ").toLowerCase();
+      const dictionary = [
+        { pattern: /(launch|release|announc|rollout)/, label: "launch: 発表・公開" },
+        { pattern: /(model|llm|gpt|claude|gemini|sonnet)/, label: "model: モデル" },
+        { pattern: /(agent|assistant|operator|workflow)/, label: "agent: 自律実行" },
+        { pattern: /(chip|gpu|compute|datacenter|infrastructure)/, label: "compute: 計算資源" },
+        { pattern: /(funding|raise|revenue|enterprise|business)/, label: "business: 事業化" },
+        { pattern: /(scientific|science)/, label: "scientific: 科学の" },
+        { pattern: /(startup)/, label: "startup: 新興企業" },
+        { pattern: /(acquisition|acquisitions)/, label: "acquisition: 買収" },
+        { pattern: /(long-running)/, label: "long-running: 長時間動く" },
+        { pattern: /(coding|code)/, label: "coding: コーディング" },
+        { pattern: /(hunt)/, label: "hunt: 探す" },
+        { pattern: /(team|teams)/, label: "team: チーム" },
+        { pattern: /(scientific computing)/, label: "computing: 計算処理" }
+      ];
+
+      const tags = dictionary
+        .filter((entry) => entry.pattern.test(text))
+        .map((entry) => entry.label);
+      const glossary = {
+        long: "long: 長い",
+        running: "running: 動作中の",
+        scientific: "scientific: 科学の",
+        computing: "computing: 計算処理",
+        startup: "startup: 新興企業",
+        lovable: "Lovable: 会社名",
+        hunt: "hunt: 探す",
+        acquisitions: "acquisitions: 買収案件",
+        acquisition: "acquisition: 買収",
+        founder: "founder: 創業者",
+        company: "company: 会社",
+        team: "team: チーム",
+        teams: "teams: 複数のチーム",
+        coding: "coding: コーディング",
+        vibe: "vibe: 雰囲気・ノリ",
+        scientificcomputing: "scientific computing: 科学技術計算",
+        claude: "Claude: AnthropicのAI",
+        anthropic: "Anthropic: 会社名",
+        chip: "chip: 半導体",
+        model: "model: モデル",
+        release: "release: 公開",
+        launch: "launch: 発表",
+        funding: "funding: 資金調達",
+        business: "business: 事業",
+        agent: "agent: 自律実行AI"
+      };
+
+      const words = item.title.match(/[A-Za-z][A-Za-z-]{2,}/g) || [];
+      const normalizedWords = words.map((word) => word.toLowerCase().replace(/[^a-z-]/g, ""));
+      const extraTags = normalizedWords
+        .map((word) => glossary[word.replace(/-/g, "")] || glossary[word])
+        .filter(Boolean);
+
+      const merged = [];
+      [...tags, ...extraTags].forEach((tag) => {
+        if (!merged.includes(tag)) {
+          merged.push(tag);
+        }
+      });
+
+      if (merged.length > 0) {
+        return merged.slice(0, 6);
+      }
+
+      return normalizedWords
+        .filter((word, index) => normalizedWords.indexOf(word) === index)
+        .slice(0, 6)
+        .map((word) => word.toLowerCase());
     }
 
     function formatDateTime(timestamp) {
@@ -1217,8 +1400,9 @@
       renderConversation();
 
       try {
-        await translateVisibleNewsTitles();
-        state.conversationText = buildConversationSummary(state.filteredNews.slice(0, 6));
+        const baseItems = state.filteredNews;
+        await translateNewsTitles(baseItems, 8);
+        state.conversationText = buildConversationSummary(baseItems);
         renderConversation();
       } finally {
         state.isGeneratingConversation = false;
@@ -1226,15 +1410,25 @@
       }
     }
 
+    async function autoGenerateConversationSummary() {
+      if (state.filteredNews.length === 0) {
+        renderConversation();
+        return;
+      }
+      await generateConversationSummary();
+    }
+
     function buildConversationSummary(newsItems) {
-      const lead = newsItems[0];
+      const conversationItems = newsItems.slice(0, 10);
+      const lead = conversationItems[0];
       const focusThemes = detectThemes(newsItems);
       const sourceNames = summarizeSources(newsItems);
-      const headline1 = getReadableHeadline(newsItems[0]);
-      const headline2 = newsItems[1] ? getReadableHeadline(newsItems[1]) : "";
-      const headline3 = newsItems[2] ? getReadableHeadline(newsItems[2]) : "";
+      const headline1 = conversationItems[0] ? getReadableHeadline(conversationItems[0]) : "";
+      const headline2 = conversationItems[1] ? getReadableHeadline(conversationItems[1]) : "";
+      const headline3 = conversationItems[2] ? getReadableHeadline(conversationItems[2]) : "";
       const angle = buildImpactAngle(focusThemes);
       const closing = buildClosingLine(newsItems);
+      const keywordTail = buildKeywordTail(newsItems);
 
       const lines = [
         "A: 今日のAIニュース、ざっくりどんな流れだった？",
@@ -1255,10 +1449,76 @@
 
       lines.push("A: まとめると、今日の変化はどこにある？");
       lines.push("B: " + angle);
+      if (keywordTail) {
+        lines.push("A: ほかに流れとして見ておくべきものは？");
+        lines.push("B: " + keywordTail);
+      }
       lines.push("A: じゃあ今日の話題として一言で言うと？");
       lines.push("B: " + closing);
 
       return lines.join("\n");
+    }
+
+    function buildKeywordTail(newsItems) {
+      if (newsItems.length <= 3) {
+        return "";
+      }
+
+      const keywords = collectTopicKeywords(newsItems);
+      if (keywords.length === 0) {
+        return "";
+      }
+
+      return "そのほかの最新ニュースでは、" + keywords.join("、") + "あたりのキーワードが続いていました。";
+    }
+
+    function collectTopicKeywords(newsItems) {
+      const text = newsItems.map((item) => [item.title, item.summary].join(" ")).join(" ").toLowerCase();
+      const dictionary = [
+        { pattern: /(gpt|claude|gemini|sonnet|llm)/, label: "モデル更新" },
+        { pattern: /(agent|assistant|operator|workflow)/, label: "AIエージェント" },
+        { pattern: /(chip|gpu|compute|datacenter|infrastructure)/, label: "半導体・計算資源" },
+        { pattern: /(funding|raise|acquisition|enterprise|business|revenue)/, label: "資金調達・事業化" },
+        { pattern: /(openai|anthropic|google|nvidia)/, label: "主要プレイヤーの動き" },
+        { pattern: /(safety|policy|regulation|copyright)/, label: "安全性・制度" }
+      ];
+
+      return dictionary
+        .filter((entry) => entry.pattern.test(text))
+        .map((entry) => entry.label)
+        .slice(0, 4);
+    }
+
+    function buildFiltersSummaryText() {
+      const parts = [];
+      if (state.filters.keyword) {
+        parts.push("検索: " + state.filters.keyword);
+      }
+      if (state.filters.source !== "all") {
+        parts.push("掲載元: " + getSourceLabel(state.filters.source));
+      }
+      if (state.filters.dateRange !== "all") {
+        parts.push("公開日: " + getDateRangeLabel(state.filters.dateRange));
+      }
+      return parts.length > 0 ? parts.join(" / ") : "現在は全ニュースを表示中です。";
+    }
+
+    function getSourceLabel(sourceId) {
+      const source = SOURCE_OPTIONS.find((option) => option.id === sourceId);
+      return source ? source.label : sourceId;
+    }
+
+    function getDateRangeLabel(value) {
+      if (value === "today") {
+        return "今日";
+      }
+      if (value === "3days") {
+        return "3日以内";
+      }
+      if (value === "7days") {
+        return "7日以内";
+      }
+      return "すべて";
     }
 
     function detectThemes(newsItems) {
