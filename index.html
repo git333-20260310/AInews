@@ -279,35 +279,11 @@
       margin-bottom: 12px;
     }
 
-    .conversation-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
     .conversation-sub {
       margin: 8px 0 0;
       color: var(--muted);
       font-size: 14px;
       line-height: 1.7;
-    }
-
-    .conversation-button {
-      border: 0;
-      border-radius: 16px;
-      padding: 13px 16px;
-      min-height: 48px;
-      background: var(--accent);
-      color: #ffffff;
-      font-weight: 800;
-      cursor: pointer;
-    }
-
-    .conversation-button[disabled] {
-      opacity: 0.64;
-      cursor: wait;
     }
 
     .conversation-output {
@@ -321,15 +297,15 @@
       font-size: 14px;
     }
 
-    .conversation-output.empty-state {
-      color: var(--muted);
+    .topic-keywords {
+      margin: 14px 0 0;
+      padding-left: 20px;
+      display: grid;
+      gap: 8px;
     }
 
-    .conversation-meta {
-      margin-top: 10px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.7;
+    .topic-keywords li {
+      line-height: 1.6;
     }
 
     .news-header {
@@ -567,15 +543,9 @@
 
     <section class="news-wrap">
       <div class="panel conversation-panel">
-        <div class="conversation-top">
-          <div>
-            <h2>今日の話題</h2>
-            <p class="conversation-sub">表示中ニュース全体をもとに、会話形式で自動要約します。</p>
-          </div>
-          <button id="conversationButton" class="conversation-button" type="button">会話まとめを再作成</button>
-        </div>
-        <div id="conversationOutput" class="conversation-output empty-state">会話まとめを準備しています。</div>
-        <div id="conversationMeta" class="conversation-meta"></div>
+        <h2>今日の話題（キーワード10）</h2>
+        <p class="conversation-sub">表示中ニュース全体から抽出したキーワードを10件表示します。</p>
+        <div id="conversationOutput" class="conversation-output">キーワードを準備しています。</div>
       </div>
       <div class="panel news-header">
         <h2>ニュース一覧</h2>
@@ -740,10 +710,9 @@
       visibleNews: [],
       overflowNews: [],
       isLoading: false,
-      isGeneratingConversation: false,
       lastUpdatedAt: null,
       translations: {},
-      conversationText: "",
+      topicKeywords: [],
       filters: {
         keyword: "",
         source: "all",
@@ -760,9 +729,7 @@
       dateFilter: document.getElementById("dateFilter"),
       filtersPanel: document.getElementById("filtersPanel"),
       filtersSummary: document.getElementById("filtersSummary"),
-      conversationButton: document.getElementById("conversationButton"),
       conversationOutput: document.getElementById("conversationOutput"),
-      conversationMeta: document.getElementById("conversationMeta"),
       statusMessage: document.getElementById("statusMessage"),
       newsSummary: document.getElementById("newsSummary"),
       newsList: document.getElementById("newsList")
@@ -846,9 +813,6 @@
         applyFiltersAndRender();
       });
 
-      elements.conversationButton.addEventListener("click", () => {
-        generateConversationSummary();
-      });
     }
 
     function syncFilterInputs() {
@@ -1137,13 +1101,12 @@
       state.filteredNews = state.allNews.filter((item) => matchesFilters(item));
       state.visibleNews = state.filteredNews.slice(0, DISPLAY_LIMIT);
       state.overflowNews = state.filteredNews.slice(DISPLAY_LIMIT);
-      state.conversationText = "";
+      state.topicKeywords = buildTopicKeywords(state.filteredNews, 10);
       renderMeta();
       renderConversation();
       renderNewsList();
       translateNewsTitles(state.filteredNews, 20).then(() => {
         renderNewsList();
-        autoGenerateConversationSummary();
       });
     }
 
@@ -1199,31 +1162,22 @@
         : totalCount + "件 / 全" + totalFetched + "件";
       elements.lastUpdated.textContent = state.lastUpdatedAt ? formatDateTime(state.lastUpdatedAt) : "未更新";
       elements.newsSummary.textContent = totalCount > 0
-        ? "一覧は " + visibleCount + "件、残り " + overflowCount + "件 は上の会話まとめで確認できます。"
+        ? "一覧は " + visibleCount + "件、残り " + overflowCount + "件 は上のキーワードで流れを確認できます。"
         : "条件に合うニュースはまだありません。";
       elements.filtersSummary.textContent = buildFiltersSummaryText();
       document.title = APP_TITLE;
     }
 
     function renderConversation() {
-      if (!state.conversationText) {
-        elements.conversationOutput.className = "conversation-output empty-state";
-        elements.conversationOutput.textContent = "会話まとめを準備しています。";
-      } else {
-        elements.conversationOutput.className = "conversation-output";
-        elements.conversationOutput.textContent = state.conversationText;
+      if (state.topicKeywords.length === 0) {
+        elements.conversationOutput.textContent = "キーワードがありません。絞り込み条件を見直してください。";
+        return;
       }
 
-      if (state.filteredNews.length === 0) {
-        elements.conversationMeta.textContent = "";
-      } else {
-        elements.conversationMeta.textContent = "表示中の " + state.filteredNews.length + "件 全体を見ながら、読みやすく圧縮してまとめています。";
-      }
-
-      elements.conversationButton.disabled = state.isGeneratingConversation;
-      elements.conversationButton.textContent = state.isGeneratingConversation
-        ? "作成中..."
-        : "会話まとめを再作成";
+      elements.conversationOutput.innerHTML =
+        '<ol class="topic-keywords">' +
+        state.topicKeywords.map((keyword) => `<li>${escapeHtml(keyword)}</li>`).join("") +
+        "</ol>";
     }
 
     function renderNewsList() {
@@ -1530,104 +1484,35 @@
       fetchAndRenderNews(false);
     }
 
-    async function generateConversationSummary() {
-      if (state.filteredNews.length === 0) {
-        state.conversationText = "A: 今日はニュースが少ないね。\nB: いまの絞り込み条件では表示中のニュースがないので、条件をゆるめると話題を作れそうです。";
-        renderConversation();
-        return;
+    function buildTopicKeywords(newsItems, limit = 10) {
+      if (!Array.isArray(newsItems) || newsItems.length === 0) {
+        return [];
       }
 
-      state.isGeneratingConversation = true;
-      renderConversation();
+      const counts = new Map();
+      const stopWords = new Set([
+        "the", "and", "for", "with", "from", "that", "this", "into", "over", "after",
+        "about", "news", "today", "will", "says", "said", "more", "than", "amid",
+        "new", "its", "are", "you", "your", "our", "their", "ai", "a", "an", "to",
+        "in", "on", "at", "of", "by", "is", "as", "it", "be"
+      ]);
 
-      try {
-        const baseItems = state.filteredNews;
-        await translateNewsTitles(baseItems, 8);
-        state.conversationText = buildConversationSummary(baseItems);
-        renderConversation();
-      } finally {
-        state.isGeneratingConversation = false;
-        renderConversation();
-      }
-    }
+      newsItems.forEach((item) => {
+        const text = [item.title, item.summary, item.sourceLabel].join(" ");
+        const words = text.match(/[A-Za-z][A-Za-z0-9-]{2,}|\p{Script=Han}{2,}|[\p{Script=Hiragana}\p{Script=Katakana}ー]{3,}/gu) || [];
+        words.forEach((word) => {
+          const normalized = word.toLowerCase();
+          if (stopWords.has(normalized)) {
+            return;
+          }
+          counts.set(normalized, (counts.get(normalized) || 0) + 1);
+        });
+      });
 
-    async function autoGenerateConversationSummary() {
-      if (state.filteredNews.length === 0) {
-        renderConversation();
-        return;
-      }
-      await generateConversationSummary();
-    }
-
-    function buildConversationSummary(newsItems) {
-      const conversationItems = newsItems.slice(0, 10);
-      const lead = conversationItems[0];
-      const focusThemes = detectThemes(newsItems);
-      const sourceNames = summarizeSources(newsItems);
-      const headline1 = conversationItems[0] ? getReadableHeadline(conversationItems[0]) : "";
-      const headline2 = conversationItems[1] ? getReadableHeadline(conversationItems[1]) : "";
-      const headline3 = conversationItems[2] ? getReadableHeadline(conversationItems[2]) : "";
-      const angle = buildImpactAngle(focusThemes);
-      const closing = buildClosingLine(newsItems);
-      const keywordTail = buildKeywordTail(newsItems);
-
-      const lines = [
-        "A: 今日のAIニュース、ざっくりどんな流れだった？",
-        "B: 今日は" + sourceNames + "を中心に、" + focusThemes.join("と") + "が目立つ一日でした。",
-        "A: いちばん気になる話題は？",
-        "B: まずは「" + headline1 + "」です。" + buildContextSentence(lead),
-      ];
-
-      if (headline2) {
-        lines.push("A: ほかにも押さえておくべき動きはある？");
-        lines.push("B: 「" + headline2 + "」も重要です。" + buildContextSentence(newsItems[1]));
-      }
-
-      if (headline3) {
-        lines.push("A: それって一過性のニュースなのかな。");
-        lines.push("B: それだけではなく、「" + headline3 + "」も出ていて、流れが点ではなく面で広がっている印象です。");
-      }
-
-      lines.push("A: まとめると、今日の変化はどこにある？");
-      lines.push("B: " + angle);
-      if (keywordTail) {
-        lines.push("A: ほかに流れとして見ておくべきものは？");
-        lines.push("B: " + keywordTail);
-      }
-      lines.push("A: じゃあ今日の話題として一言で言うと？");
-      lines.push("B: " + closing);
-
-      return lines.join("\n");
-    }
-
-    function buildKeywordTail(newsItems) {
-      if (newsItems.length <= 3) {
-        return "";
-      }
-
-      const keywords = collectTopicKeywords(newsItems);
-      if (keywords.length === 0) {
-        return "";
-      }
-
-      return "そのほかの最新ニュースでは、" + keywords.join("、") + "あたりのキーワードが続いていました。";
-    }
-
-    function collectTopicKeywords(newsItems) {
-      const text = newsItems.map((item) => [item.title, item.summary].join(" ")).join(" ").toLowerCase();
-      const dictionary = [
-        { pattern: /(gpt|claude|gemini|sonnet|llm)/, label: "モデル更新" },
-        { pattern: /(agent|assistant|operator|workflow)/, label: "AIエージェント" },
-        { pattern: /(chip|gpu|compute|datacenter|infrastructure)/, label: "半導体・計算資源" },
-        { pattern: /(funding|raise|acquisition|enterprise|business|revenue)/, label: "資金調達・事業化" },
-        { pattern: /(openai|anthropic|google|nvidia)/, label: "主要プレイヤーの動き" },
-        { pattern: /(safety|policy|regulation|copyright)/, label: "安全性・制度" }
-      ];
-
-      return dictionary
-        .filter((entry) => entry.pattern.test(text))
-        .map((entry) => entry.label)
-        .slice(0, 4);
+      return Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([keyword]) => keyword);
     }
 
     function buildFiltersSummaryText() {
@@ -1660,88 +1545,6 @@
         return "7日以内";
       }
       return "すべて";
-    }
-
-    function detectThemes(newsItems) {
-      const themes = [];
-      const text = newsItems.map((item) => [item.title, item.summary].join(" ")).join(" ").toLowerCase();
-
-      if (/(gpt|claude|gemini|model|sonnet|llm)/.test(text)) {
-        themes.push("モデル競争");
-      }
-      if (/(chip|gpu|nvidia|compute|infrastructure|datacenter)/.test(text)) {
-        themes.push("計算資源");
-      }
-      if (/(agent|assistant|workflow|tool|operator)/.test(text)) {
-        themes.push("AIエージェント");
-      }
-      if (/(funding|raise|acquisition|enterprise|business|revenue)/.test(text)) {
-        themes.push("事業化");
-      }
-      if (themes.length === 0) {
-        themes.push("新サービスの発表");
-      }
-      return themes.slice(0, 2);
-    }
-
-    function summarizeSources(newsItems) {
-      const labels = [];
-      newsItems.forEach((item) => {
-        if (!labels.includes(item.sourceLabel)) {
-          labels.push(item.sourceLabel);
-        }
-      });
-
-      if (labels.length === 1) {
-        return labels[0];
-      }
-      if (labels.length === 2) {
-        return labels[0] + "と" + labels[1];
-      }
-      return labels.slice(0, 3).join("、");
-    }
-
-    function getReadableHeadline(item) {
-      return getTranslatedTitle(item) || item.title;
-    }
-
-    function buildContextSentence(item) {
-      if (!item) {
-        return "";
-      }
-
-      const summary = item.summary
-        ? item.summary.replace(/\.\.\.$/, "").slice(0, 70)
-        : "";
-
-      if (summary) {
-        return " 要点だけ見ると、" + summary + "という内容です。";
-      }
-
-      if (item.sourceLabel) {
-        return " " + item.sourceLabel + "発の話題としてチェックしておきたい内容です。";
-      }
-
-      return "";
-    }
-
-    function buildImpactAngle(themes) {
-      if (themes.includes("モデル競争") && themes.includes("計算資源")) {
-        return "高性能なモデル開発と、その土台になる計算資源の確保が同時に進んでいて、AI競争がさらに本格化している点です。";
-      }
-      if (themes.includes("AIエージェント")) {
-        return "単なるチャットから一歩進んで、実務の流れにAIを組み込む方向が強まっている点です。";
-      }
-      if (themes.includes("事業化")) {
-        return "技術発表だけではなく、企業導入や収益化まで含めてAIが現実のビジネスに深く入ってきている点です。";
-      }
-      return "各社が発表を重ねながら、AIの使い道を広げる競争を着実に進めている点です。";
-    }
-
-    function buildClosingLine(newsItems) {
-      const lead = newsItems[0];
-      const leadSource = lead ? lead.sourceLabel : "AI業界";
-      return "今日は" + leadSource + "の動きを起点に、AIの性能競争と実用化の広がりが同時に見えた一日でした。";
     }
 
     initializeApp();
