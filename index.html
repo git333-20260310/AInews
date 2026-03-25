@@ -411,25 +411,6 @@
       line-height: 1.7;
     }
 
-    .study-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .study-tag {
-      display: inline-flex;
-      align-items: center;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: var(--panel-strong);
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
     .news-link {
       display: inline-flex;
       align-items: center;
@@ -1203,11 +1184,6 @@
           const translatedTitleHtml = translatedTitle
             ? `<p class="news-title-ja">${escapeHtml(translatedTitle)}</p>`
             : "";
-          const studyTags = buildStudyTags(item);
-          const studyTagsHtml = studyTags.length > 0
-            ? `<div class="study-tags">${studyTags.map((tag) => `<span class="study-tag">${escapeHtml(tag)}</span>`).join("")}</div>`
-            : "";
-
           return `
             <a class="news-card" href="${escapeAttribute(item.link)}" target="_blank" rel="noopener noreferrer">
               <div class="card-top">
@@ -1220,7 +1196,6 @@
               <h3 class="news-title">${escapeHtml(item.title)}</h3>
               ${translatedTitleHtml}
               ${summaryHtml}
-              ${studyTagsHtml}
               <span class="news-link">元記事を開く</span>
             </a>
           `;
@@ -1290,140 +1265,6 @@
         return "";
       }
       return normalizedTranslated;
-    }
-
-    function buildStudyTags(item) {
-      const translatedTitle = getTranslatedTitle(item);
-      const titleLower = item.title.toLowerCase();
-      const phrasePairs = [
-        { en: "artificial intelligence", ja: "人工知能" },
-        { en: "scientific computing", ja: "科学技術計算" },
-        { en: "data center", ja: "データセンター" },
-        { en: "data centers", ja: "データセンター" },
-        { en: "power supply", ja: "電力供給" },
-        { en: "infrastructure investment", ja: "インフラ投資" },
-        { en: "robotics ai", ja: "ロボティクスAI" },
-        { en: "first customers", ja: "最初の顧客" },
-        { en: "shutting down", ja: "終了する" },
-        { en: "long-running", ja: "長時間動く" },
-        { en: "new customers", ja: "新規顧客" },
-        { en: "startup", ja: "スタートアップ" },
-        { en: "acquisitions", ja: "買収" },
-        { en: "acquisition", ja: "買収" },
-        { en: "scientific", ja: "科学の" },
-        { en: "computing", ja: "計算処理" },
-        { en: "artificial", ja: "人工の" },
-        { en: "intelligence", ja: "知能" },
-        { en: "debuts", ja: "初公開する" },
-        { en: "debut", ja: "初登場" },
-        { en: "customers", ja: "顧客" },
-        { en: "customer", ja: "顧客" },
-        { en: "startup", ja: "新興企業" },
-        { en: "model", ja: "モデル" },
-        { en: "models", ja: "モデル" },
-        { en: "chip", ja: "半導体" },
-        { en: "chips", ja: "半導体" },
-        { en: "funding", ja: "資金調達" },
-        { en: "business", ja: "事業" },
-        { en: "agent", ja: "自律実行AI" },
-        { en: "agents", ja: "自律実行AI" },
-        { en: "launch", ja: "発表" },
-        { en: "release", ja: "公開" },
-        { en: "cpu", ja: "CPU" },
-        { en: "phone", ja: "携帯電話" },
-        { en: "app", ja: "アプリ" }
-      ];
-
-      const properNouns = [
-        { en: "OpenAI", ja: "OpenAI" },
-        { en: "Anthropic", ja: "Anthropic" },
-        { en: "Claude", ja: "Claude" },
-        { en: "Sora", ja: "Sora" },
-        { en: "Arm", ja: "Arm" },
-        { en: "Meta", ja: "Meta" },
-        { en: "Cloudflare", ja: "Cloudflare" },
-        { en: "Microsoft", ja: "Microsoft" },
-        { en: "Amazon", ja: "Amazon" },
-        { en: "Nvidia", ja: "NVIDIA" },
-        { en: "SoftBank", ja: "SoftBank" },
-        { en: "xAI", ja: "xAI" },
-        { en: "Grok", ja: "Grok" }
-      ];
-
-      const tags = [];
-
-      properNouns.forEach((entry) => {
-        if (item.title.includes(entry.en)) {
-          tags.push(entry.en + " -> " + entry.ja);
-        }
-      });
-
-      phrasePairs.forEach((entry) => {
-        if (titleLower.includes(entry.en)) {
-          tags.push(entry.en + " -> " + entry.ja);
-        }
-      });
-
-      if (translatedTitle) {
-        const wordPairs = extractWordPairsFromTitles(item.title, translatedTitle);
-        wordPairs.forEach((pair) => {
-          tags.push(pair);
-        });
-      }
-
-      const uniqueTags = [];
-      tags.forEach((tag) => {
-        if (!uniqueTags.includes(tag)) {
-          uniqueTags.push(tag);
-        }
-      });
-
-      return uniqueTags.slice(0, 6);
-    }
-
-    function extractWordPairsFromTitles(englishTitle, japaneseTitle) {
-      const pairs = [];
-      const words = englishTitle.match(/[A-Za-z][A-Za-z-]{2,}/g) || [];
-      const normalized = words
-        .map((word) => word.replace(/[^A-Za-z-]/g, ""))
-        .filter((word, index, list) => list.indexOf(word) === index);
-
-      const fallbackDictionary = {
-        new: "新しい",
-        first: "最初の",
-        customers: "顧客",
-        customer: "顧客",
-        startup: "スタートアップ",
-        artificial: "人工の",
-        intelligence: "知能",
-        scientific: "科学の",
-        computing: "計算処理",
-        debuts: "初公開",
-        debut: "初登場",
-        model: "モデル",
-        app: "アプリ",
-        phone: "携帯電話",
-        shutting: "終了",
-        down: "停止",
-        infrastructure: "インフラ",
-        investment: "投資",
-        robotics: "ロボティクス",
-        electricity: "電力",
-        semiconductor: "半導体"
-      };
-
-      normalized.forEach((word) => {
-        const lowerWord = word.toLowerCase();
-        const translated = fallbackDictionary[lowerWord];
-        if (!translated) {
-          return;
-        }
-        if (japaneseTitle.includes(translated)) {
-          pairs.push(word + " -> " + translated);
-        }
-      });
-
-      return pairs;
     }
 
     function formatDateTime(timestamp) {
