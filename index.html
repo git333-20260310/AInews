@@ -1360,6 +1360,21 @@
         .filter((entry) => entry.pattern.test(text))
         .map((entry) => entry.label);
       const glossary = {
+        arm: "Arm: 会社名",
+        debuts: "debuts: 初登場する",
+        debut: "debut: 初登場",
+        new: "new: 新しい",
+        artificial: "artificial: 人工の",
+        intelligence: "intelligence: 知能",
+        cpu: "CPU: 中央演算装置",
+        meta: "Meta: 会社名",
+        openai: "OpenAI: 会社名",
+        cloudflare: "Cloudflare: 会社名",
+        first: "first: 最初の",
+        customer: "customer: 顧客",
+        customers: "customers: 顧客たち",
+        globe: "Globe: 媒体名",
+        mail: "Mail: 媒体名",
         long: "long: 長い",
         running: "running: 動作中の",
         scientific: "scientific: 科学の",
@@ -1375,6 +1390,16 @@
         teams: "teams: 複数のチーム",
         coding: "coding: コーディング",
         vibe: "vibe: 雰囲気・ノリ",
+        sora: "Sora: OpenAIの動画AI",
+        phone: "phone: 携帯電話",
+        shutting: "shutting: 閉じること",
+        down: "down: 停止して",
+        app: "app: アプリ",
+        your: "your: あなたの",
+        was: "was: だった",
+        the: "the: その",
+        now: "now: 今",
+        firstcustomers: "first customers: 最初の顧客",
         scientificcomputing: "scientific computing: 科学技術計算",
         claude: "Claude: AnthropicのAI",
         anthropic: "Anthropic: 会社名",
@@ -1407,7 +1432,7 @@
       return normalizedWords
         .filter((word, index) => normalizedWords.indexOf(word) === index)
         .slice(0, 6)
-        .map((word) => word.toLowerCase());
+        .map((word) => glossary[word.replace(/-/g, "")] || glossary[word] || (word + ": 単語"));
     }
 
     function formatDateTime(timestamp) {
