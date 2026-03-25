@@ -548,7 +548,7 @@
             <input id="keywordInput" class="control" type="search" placeholder="例: GPT, agent, chip">
           </div>
           <div class="field">
-            <label for="sourceFilter">掲載元</label>
+            <label for="sourceFilter">掲載元・テーマ</label>
             <select id="sourceFilter" class="control"></select>
           </div>
           <div class="field">
@@ -598,15 +598,36 @@
 
     const SOURCE_OPTIONS = [
       { id: "all", label: "すべて" },
+      { id: "softbank", label: "SoftBank Group" },
+      { id: "arm", label: "ARM" },
       { id: "openai", label: "OpenAI" },
       { id: "nvidia", label: "NVIDIA" },
+      { id: "microsoft", label: "Microsoft" },
+      { id: "amazon", label: "Amazon" },
       { id: "google", label: "Google" },
       { id: "anthropic", label: "Anthropic" },
+      { id: "xai", label: "xAI" },
+      { id: "ai_datacenter", label: "AI data center" },
+      { id: "ai_semiconductor", label: "AI semiconductor" },
+      { id: "electricity_datacenter", label: "electricity data center" },
+      { id: "robotics_ai", label: "robotics AI" },
+      { id: "stargate_project", label: "Stargate project" },
+      { id: "ai_infra_investment", label: "AI infrastructure investment" },
       { id: "techcrunch", label: "TechCrunch" },
       { id: "venturebeat", label: "VentureBeat" }
     ];
 
     const NEWS_SOURCES = [
+      {
+        id: "softbank",
+        label: "SoftBank Group",
+        feedUrl: buildGoogleNewsSearchFeed("SoftBank Group AI OR SoftBank artificial intelligence")
+      },
+      {
+        id: "arm",
+        label: "ARM",
+        feedUrl: buildGoogleNewsSearchFeed("Arm Holdings AI OR Arm semiconductor AI")
+      },
       {
         id: "openai",
         label: "OpenAI",
@@ -618,6 +639,16 @@
         feedUrl: "https://blogs.nvidia.com/feed/"
       },
       {
+        id: "microsoft",
+        label: "Microsoft",
+        feedUrl: buildGoogleNewsSearchFeed("Microsoft AI OR Azure AI OR Microsoft Copilot")
+      },
+      {
+        id: "amazon",
+        label: "Amazon",
+        feedUrl: buildGoogleNewsSearchFeed("Amazon AI OR AWS AI OR Amazon Bedrock")
+      },
+      {
         id: "google",
         label: "Google",
         feedUrl: "https://blog.google/technology/ai/rss/"
@@ -626,6 +657,41 @@
         id: "anthropic",
         label: "Anthropic",
         feedUrl: "https://news.google.com/rss/search?q=site:anthropic.com%20Anthropic&hl=en-US&gl=US&ceid=US:en"
+      },
+      {
+        id: "xai",
+        label: "xAI",
+        feedUrl: buildGoogleNewsSearchFeed("xAI OR Elon Musk xAI OR Grok")
+      },
+      {
+        id: "ai_datacenter",
+        label: "AI data center",
+        feedUrl: buildGoogleNewsSearchFeed("\"AI data center\" OR \"AI datacenter\"")
+      },
+      {
+        id: "ai_semiconductor",
+        label: "AI semiconductor",
+        feedUrl: buildGoogleNewsSearchFeed("\"AI semiconductor\" OR \"AI chip\" OR GPU AI")
+      },
+      {
+        id: "electricity_datacenter",
+        label: "electricity data center",
+        feedUrl: buildGoogleNewsSearchFeed("\"data center power\" OR \"data center electricity\" OR grid AI datacenter")
+      },
+      {
+        id: "robotics_ai",
+        label: "robotics AI",
+        feedUrl: buildGoogleNewsSearchFeed("\"robotics AI\" OR humanoid robot AI")
+      },
+      {
+        id: "stargate_project",
+        label: "Stargate project",
+        feedUrl: buildGoogleNewsSearchFeed("\"Stargate project\" AI")
+      },
+      {
+        id: "ai_infra_investment",
+        label: "AI infrastructure investment",
+        feedUrl: buildGoogleNewsSearchFeed("\"AI infrastructure investment\" OR \"AI infrastructure\" investment")
       },
       {
         id: "techcrunch",
@@ -654,7 +720,16 @@
       "sonnet",
       "gemini",
       "claude",
-      "nvidia"
+      "nvidia",
+      "grok",
+      "xai",
+      "arm",
+      "copilot",
+      "bedrock",
+      "robot",
+      "datacenter",
+      "infrastructure",
+      "stargate"
     ];
 
     const DISPLAY_LIMIT = 10;
@@ -692,6 +767,10 @@
       newsSummary: document.getElementById("newsSummary"),
       newsList: document.getElementById("newsList")
     };
+
+    function buildGoogleNewsSearchFeed(query) {
+      return "https://news.google.com/rss/search?q=" + encodeURIComponent(query) + "&hl=en-US&gl=US&ceid=US:en";
+    }
 
     function initializeSourceFilter() {
       elements.sourceFilter.innerHTML = SOURCE_OPTIONS
