@@ -1339,100 +1339,137 @@
     }
 
     function buildStudyTags(item) {
-      const text = [item.title, item.summary].join(" ").toLowerCase();
-      const dictionary = [
-        { pattern: /(launch|release|announc|rollout)/, label: "launch: 発表・公開" },
-        { pattern: /(model|llm|gpt|claude|gemini|sonnet)/, label: "model: モデル" },
-        { pattern: /(agent|assistant|operator|workflow)/, label: "agent: 自律実行" },
-        { pattern: /(chip|gpu|compute|datacenter|infrastructure)/, label: "compute: 計算資源" },
-        { pattern: /(funding|raise|revenue|enterprise|business)/, label: "business: 事業化" },
-        { pattern: /(scientific|science)/, label: "scientific: 科学の" },
-        { pattern: /(startup)/, label: "startup: 新興企業" },
-        { pattern: /(acquisition|acquisitions)/, label: "acquisition: 買収" },
-        { pattern: /(long-running)/, label: "long-running: 長時間動く" },
-        { pattern: /(coding|code)/, label: "coding: コーディング" },
-        { pattern: /(hunt)/, label: "hunt: 探す" },
-        { pattern: /(team|teams)/, label: "team: チーム" },
-        { pattern: /(scientific computing)/, label: "computing: 計算処理" }
+      const translatedTitle = getTranslatedTitle(item);
+      const titleLower = item.title.toLowerCase();
+      const phrasePairs = [
+        { en: "artificial intelligence", ja: "人工知能" },
+        { en: "scientific computing", ja: "科学技術計算" },
+        { en: "data center", ja: "データセンター" },
+        { en: "data centers", ja: "データセンター" },
+        { en: "power supply", ja: "電力供給" },
+        { en: "infrastructure investment", ja: "インフラ投資" },
+        { en: "robotics ai", ja: "ロボティクスAI" },
+        { en: "first customers", ja: "最初の顧客" },
+        { en: "shutting down", ja: "終了する" },
+        { en: "long-running", ja: "長時間動く" },
+        { en: "new customers", ja: "新規顧客" },
+        { en: "startup", ja: "スタートアップ" },
+        { en: "acquisitions", ja: "買収" },
+        { en: "acquisition", ja: "買収" },
+        { en: "scientific", ja: "科学の" },
+        { en: "computing", ja: "計算処理" },
+        { en: "artificial", ja: "人工の" },
+        { en: "intelligence", ja: "知能" },
+        { en: "debuts", ja: "初公開する" },
+        { en: "debut", ja: "初登場" },
+        { en: "customers", ja: "顧客" },
+        { en: "customer", ja: "顧客" },
+        { en: "startup", ja: "新興企業" },
+        { en: "model", ja: "モデル" },
+        { en: "models", ja: "モデル" },
+        { en: "chip", ja: "半導体" },
+        { en: "chips", ja: "半導体" },
+        { en: "funding", ja: "資金調達" },
+        { en: "business", ja: "事業" },
+        { en: "agent", ja: "自律実行AI" },
+        { en: "agents", ja: "自律実行AI" },
+        { en: "launch", ja: "発表" },
+        { en: "release", ja: "公開" },
+        { en: "cpu", ja: "CPU" },
+        { en: "phone", ja: "携帯電話" },
+        { en: "app", ja: "アプリ" }
       ];
 
-      const tags = dictionary
-        .filter((entry) => entry.pattern.test(text))
-        .map((entry) => entry.label);
-      const glossary = {
-        arm: "Arm: 会社名",
-        debuts: "debuts: 初登場する",
-        debut: "debut: 初登場",
-        new: "new: 新しい",
-        artificial: "artificial: 人工の",
-        intelligence: "intelligence: 知能",
-        cpu: "CPU: 中央演算装置",
-        meta: "Meta: 会社名",
-        openai: "OpenAI: 会社名",
-        cloudflare: "Cloudflare: 会社名",
-        first: "first: 最初の",
-        customer: "customer: 顧客",
-        customers: "customers: 顧客たち",
-        globe: "Globe: 媒体名",
-        mail: "Mail: 媒体名",
-        long: "long: 長い",
-        running: "running: 動作中の",
-        scientific: "scientific: 科学の",
-        computing: "computing: 計算処理",
-        startup: "startup: 新興企業",
-        lovable: "Lovable: 会社名",
-        hunt: "hunt: 探す",
-        acquisitions: "acquisitions: 買収案件",
-        acquisition: "acquisition: 買収",
-        founder: "founder: 創業者",
-        company: "company: 会社",
-        team: "team: チーム",
-        teams: "teams: 複数のチーム",
-        coding: "coding: コーディング",
-        vibe: "vibe: 雰囲気・ノリ",
-        sora: "Sora: OpenAIの動画AI",
-        phone: "phone: 携帯電話",
-        shutting: "shutting: 閉じること",
-        down: "down: 停止して",
-        app: "app: アプリ",
-        your: "your: あなたの",
-        was: "was: だった",
-        the: "the: その",
-        now: "now: 今",
-        firstcustomers: "first customers: 最初の顧客",
-        scientificcomputing: "scientific computing: 科学技術計算",
-        claude: "Claude: AnthropicのAI",
-        anthropic: "Anthropic: 会社名",
-        chip: "chip: 半導体",
-        model: "model: モデル",
-        release: "release: 公開",
-        launch: "launch: 発表",
-        funding: "funding: 資金調達",
-        business: "business: 事業",
-        agent: "agent: 自律実行AI"
-      };
+      const properNouns = [
+        { en: "OpenAI", ja: "OpenAI" },
+        { en: "Anthropic", ja: "Anthropic" },
+        { en: "Claude", ja: "Claude" },
+        { en: "Sora", ja: "Sora" },
+        { en: "Arm", ja: "Arm" },
+        { en: "Meta", ja: "Meta" },
+        { en: "Cloudflare", ja: "Cloudflare" },
+        { en: "Microsoft", ja: "Microsoft" },
+        { en: "Amazon", ja: "Amazon" },
+        { en: "Nvidia", ja: "NVIDIA" },
+        { en: "SoftBank", ja: "SoftBank" },
+        { en: "xAI", ja: "xAI" },
+        { en: "Grok", ja: "Grok" }
+      ];
 
-      const words = item.title.match(/[A-Za-z][A-Za-z-]{2,}/g) || [];
-      const normalizedWords = words.map((word) => word.toLowerCase().replace(/[^a-z-]/g, ""));
-      const extraTags = normalizedWords
-        .map((word) => glossary[word.replace(/-/g, "")] || glossary[word])
-        .filter(Boolean);
+      const tags = [];
 
-      const merged = [];
-      [...tags, ...extraTags].forEach((tag) => {
-        if (!merged.includes(tag)) {
-          merged.push(tag);
+      properNouns.forEach((entry) => {
+        if (item.title.includes(entry.en)) {
+          tags.push(entry.en + " -> " + entry.ja);
         }
       });
 
-      if (merged.length > 0) {
-        return merged.slice(0, 6);
+      phrasePairs.forEach((entry) => {
+        if (titleLower.includes(entry.en)) {
+          tags.push(entry.en + " -> " + entry.ja);
+        }
+      });
+
+      if (translatedTitle) {
+        const wordPairs = extractWordPairsFromTitles(item.title, translatedTitle);
+        wordPairs.forEach((pair) => {
+          tags.push(pair);
+        });
       }
 
-      return normalizedWords
-        .filter((word, index) => normalizedWords.indexOf(word) === index)
-        .slice(0, 6)
-        .map((word) => glossary[word.replace(/-/g, "")] || glossary[word] || (word + ": 単語"));
+      const uniqueTags = [];
+      tags.forEach((tag) => {
+        if (!uniqueTags.includes(tag)) {
+          uniqueTags.push(tag);
+        }
+      });
+
+      return uniqueTags.slice(0, 6);
+    }
+
+    function extractWordPairsFromTitles(englishTitle, japaneseTitle) {
+      const pairs = [];
+      const words = englishTitle.match(/[A-Za-z][A-Za-z-]{2,}/g) || [];
+      const normalized = words
+        .map((word) => word.replace(/[^A-Za-z-]/g, ""))
+        .filter((word, index, list) => list.indexOf(word) === index);
+
+      const fallbackDictionary = {
+        new: "新しい",
+        first: "最初の",
+        customers: "顧客",
+        customer: "顧客",
+        startup: "スタートアップ",
+        artificial: "人工の",
+        intelligence: "知能",
+        scientific: "科学の",
+        computing: "計算処理",
+        debuts: "初公開",
+        debut: "初登場",
+        model: "モデル",
+        app: "アプリ",
+        phone: "携帯電話",
+        shutting: "終了",
+        down: "停止",
+        infrastructure: "インフラ",
+        investment: "投資",
+        robotics: "ロボティクス",
+        electricity: "電力",
+        semiconductor: "半導体"
+      };
+
+      normalized.forEach((word) => {
+        const lowerWord = word.toLowerCase();
+        const translated = fallbackDictionary[lowerWord];
+        if (!translated) {
+          return;
+        }
+        if (japaneseTitle.includes(translated)) {
+          pairs.push(word + " -> " + translated);
+        }
+      });
+
+      return pairs;
     }
 
     function formatDateTime(timestamp) {
